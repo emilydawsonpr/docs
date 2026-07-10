@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 40%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 94%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 94%;
+    --muted-foreground: 215 16% 42%;
+    --accent: 210 40% 92%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 71% 30%;
+    --success-foreground: 210 40% 98%;
+    --warning: 32 95% 44%;
+    --warning-foreground: 210 40% 98%;
+    --risk: 0 72% 45%;
+    --risk-foreground: 210 40% 98%;
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
+    --ring: 221 83% 40%;
+    --radius: 0.5rem;
+  }
+
+  :root {
+    /* Data-viz tokens (dataviz skill reference palette) */
+    --chart-surface: #fcfcfb;
+    --chart-text-primary: #0b0b0b;
+    --chart-text-secondary: #52514e;
+    --chart-text-muted: #898781;
+    --chart-grid: #e1e0d9;
+    --chart-axis: #c3c2b7;
+
+    --chart-cat-1: #2a78d6; /* blue */
+    --chart-cat-2: #1baf7a; /* aqua */
+    --chart-cat-3: #eda100; /* yellow */
+    --chart-cat-4: #008300; /* green */
+    --chart-cat-5: #4a3aa7; /* violet */
+    --chart-cat-6: #e34948; /* red */
+    --chart-cat-7: #e87ba4; /* magenta */
+    --chart-cat-8: #eb6834; /* orange */
+
+    --chart-status-good: #0ca30c;
+    --chart-status-warning: #fab219;
+    --chart-status-serious: #ec835a;
+    --chart-status-critical: #d03b3b;
+    --chart-status-neutral: #898781;
+
+    --chart-seq-100: #cde2fb;
+    --chart-seq-400: #3987e5;
+    --chart-seq-700: #0d366b;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --chart-surface: #1a1a19;
+      --chart-text-primary: #ffffff;
+      --chart-text-secondary: #c3c2b7;
+      --chart-text-muted: #898781;
+      --chart-grid: #2c2c2a;
+      --chart-axis: #383835;
+
+      --chart-cat-1: #3987e5;
+      --chart-cat-2: #199e70;
+      --chart-cat-3: #c98500;
+      --chart-cat-4: #008300;
+      --chart-cat-5: #9085e9;
+      --chart-cat-6: #e66767;
+      --chart-cat-7: #d55181;
+      --chart-cat-8: #d95926;
+
+      --chart-status-good: #0ca30c;
+      --chart-status-warning: #fab219;
+      --chart-status-serious: #ec835a;
+      --chart-status-critical: #d03b3b;
+      --chart-status-neutral: #898781;
+    }
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 96%;
+    --card: 222 40% 11%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 40% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 217 91% 65%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 25% 18%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 25% 18%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 25% 20%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 63% 55%;
+    --destructive-foreground: 210 40% 96%;
+    --success: 142 60% 45%;
+    --success-foreground: 222 47% 11%;
+    --warning: 32 90% 55%;
+    --warning-foreground: 222 47% 11%;
+    --risk: 0 63% 55%;
+    --risk-foreground: 222 47% 11%;
+    --border: 217 25% 20%;
+    --input: 217 25% 20%;
+    --ring: 217 91% 65%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
