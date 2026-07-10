@@ -123,18 +123,22 @@ export function SettingsManager({
     flash("Brand saved.");
   }
 
-  async function addCompetitor(name: string, aliases: string) {
+  async function addCompetitor(name: string, aliases: string): Promise<boolean> {
     setError(null);
-    if (!name.trim()) return;
+    if (!name.trim()) return false;
     const res = await fetch(`/api/projects/${projectId}/brands`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name.trim(), aliases: toList(aliases) }),
     });
     const data = await res.json();
-    if (!res.ok) return setError(typeof data.error === "string" ? data.error : "Failed to add competitor");
+    if (!res.ok) {
+      setError(typeof data.error === "string" ? data.error : "Failed to add competitor");
+      return false;
+    }
     setBrands((bs) => [...bs, data.brand]);
     flash("Competitor added.");
+    return true;
   }
 
   async function removeCompetitor(brandId: string) {
@@ -146,18 +150,22 @@ export function SettingsManager({
     flash("Competitor removed.");
   }
 
-  async function addKeyMessage(text: string, aliases: string) {
+  async function addKeyMessage(text: string, aliases: string): Promise<boolean> {
     setError(null);
-    if (!text.trim()) return;
+    if (!text.trim()) return false;
     const res = await fetch(`/api/projects/${projectId}/key-messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: text.trim(), aliases: toList(aliases) }),
     });
     const data = await res.json();
-    if (!res.ok) return setError(typeof data.error === "string" ? data.error : "Failed to add key message");
+    if (!res.ok) {
+      setError(typeof data.error === "string" ? data.error : "Failed to add key message");
+      return false;
+    }
     setKeyMessages((ms) => [...ms, data.keyMessage]);
     flash("Key message added.");
+    return true;
   }
 
   async function removeKeyMessage(id: string) {
@@ -334,7 +342,7 @@ function CompetitorsCard({
 }: {
   competitors: BrandLike[];
   canEdit: boolean;
-  onAdd: (name: string, aliases: string) => void;
+  onAdd: (name: string, aliases: string) => Promise<boolean>;
   onRemove: (brandId: string) => void;
   onSave: (
     brandId: string,
@@ -367,10 +375,12 @@ function CompetitorsCard({
             </div>
             <Button
               size="sm"
-              onClick={() => {
-                onAdd(newName, newAliases);
-                setNewName("");
-                setNewAliases("");
+              onClick={async () => {
+                const ok = await onAdd(newName, newAliases);
+                if (ok) {
+                  setNewName("");
+                  setNewAliases("");
+                }
               }}
             >
               Add competitor
@@ -445,7 +455,7 @@ function KeyMessagesCard({
 }: {
   keyMessages: KeyMessageLike[];
   canEdit: boolean;
-  onAdd: (text: string, aliases: string) => void;
+  onAdd: (text: string, aliases: string) => Promise<boolean>;
   onRemove: (id: string) => void;
 }) {
   const [text, setText] = useState("");
@@ -479,10 +489,12 @@ function KeyMessagesCard({
             </div>
             <Button
               size="sm"
-              onClick={() => {
-                onAdd(text, aliases);
-                setText("");
-                setAliases("");
+              onClick={async () => {
+                const ok = await onAdd(text, aliases);
+                if (ok) {
+                  setText("");
+                  setAliases("");
+                }
               }}
             >
               Add key message
