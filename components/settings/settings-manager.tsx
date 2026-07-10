@@ -126,19 +126,24 @@ export function SettingsManager({
   async function addCompetitor(name: string, aliases: string): Promise<boolean> {
     setError(null);
     if (!name.trim()) return false;
-    const res = await fetch(`/api/projects/${projectId}/brands`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), aliases: toList(aliases) }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(typeof data.error === "string" ? data.error : "Failed to add competitor");
+    try {
+      const res = await fetch(`/api/projects/${projectId}/brands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), aliases: toList(aliases) }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Failed to add competitor");
+        return false;
+      }
+      setBrands((bs) => [...bs, data.brand]);
+      flash("Competitor added.");
+      return true;
+    } catch {
+      setError("Network error — please try again.");
       return false;
     }
-    setBrands((bs) => [...bs, data.brand]);
-    flash("Competitor added.");
-    return true;
   }
 
   async function removeCompetitor(brandId: string) {
@@ -153,19 +158,24 @@ export function SettingsManager({
   async function addKeyMessage(text: string, aliases: string): Promise<boolean> {
     setError(null);
     if (!text.trim()) return false;
-    const res = await fetch(`/api/projects/${projectId}/key-messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: text.trim(), aliases: toList(aliases) }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(typeof data.error === "string" ? data.error : "Failed to add key message");
+    try {
+      const res = await fetch(`/api/projects/${projectId}/key-messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.trim(), aliases: toList(aliases) }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Failed to add key message");
+        return false;
+      }
+      setKeyMessages((ms) => [...ms, data.keyMessage]);
+      flash("Key message added.");
+      return true;
+    } catch {
+      setError("Network error — please try again.");
       return false;
     }
-    setKeyMessages((ms) => [...ms, data.keyMessage]);
-    flash("Key message added.");
-    return true;
   }
 
   async function removeKeyMessage(id: string) {
