@@ -1,0 +1,829 @@
+// SignalWatch data model.
+// See ARCHITECTURE.md for a narrative overview and DATABASE.md for an ER diagram.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum MembershipRole {
+  OWNER
+  ADMINISTRATOR
+  ANALYST
+  VIEWER
+  CLIENT_VIEWER
+}
+
+enum QueryMode {
+  VISUAL
+  EXPERT
+}
+
+enum QueryTermType {
+  INCLUDE
+  EXCLUDE
+  PHRASE
+  ALIAS
+  DOMAIN_INCLUDE
+  DOMAIN_EXCLUDE
+  SOURCE_TYPE_FILTER
+  LANGUAGE_FILTER
+  GEO_FILTER
+}
+
+enum AdapterType {
+  RSS
+  GOOGLE_NEWS_RSS
+  GDELT
+  NEWSAPI
+  CSV_UPLOAD
+  MANUAL_URL
+  MANUAL_CRAWL
+  EMAIL_FORWARD
+  GOOGLE_ALERTS_EMAIL
+  REDDIT
+  YOUTUBE
+  BLUESKY
+  MASTODON
+  SLACK
+  TEAMS
+  GMAIL
+}
+
+enum SourceConnectionStatus {
+  ACTIVE
+  PAUSED
+  DISABLED
+  ERROR
+}
+
+enum SourceType {
+  NATIONAL
+  REGIONAL
+  LOCAL
+  TRADE
+  COMMUNITY
+  BLOG
+  BROADCAST
+  WIRE
+  SOCIAL
+  UNKNOWN
+}
+
+enum CoverageType {
+  FEATURE
+  NEWS_STORY
+  INTERVIEW
+  PRODUCT_REVIEW
+  OPINION
+  ROUNDUP
+  LISTICLE
+  EVENT_COVERAGE
+  PRESS_RELEASE_REPRODUCTION
+  PASSING_MENTION
+  BROADCAST_TRANSCRIPT
+  SOCIAL_POST
+  OTHER
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  MIXED
+  NEGATIVE
+}
+
+enum RelevanceLabel {
+  RELEVANT
+  POSSIBLY_RELEVANT
+  IRRELEVANT
+}
+
+enum Prominence {
+  LEAD
+  SIGNIFICANT
+  PASSING
+  BRIEF_MENTION
+}
+
+enum ReviewStatus {
+  UNREVIEWED
+  APPROVED
+  REJECTED
+  EXCLUDED
+}
+
+enum PlacementType {
+  OWNED
+  EARNED
+  PAID
+  SYNDICATED
+}
+
+enum AnalysisEngine {
+  MOCK
+  CLAUDE
+}
+
+enum IngestionJobStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+  RETRYING
+}
+
+enum AlertTriggerType {
+  HIGH_RELEVANCE
+  HIGH_RISK
+  NEGATIVE_SENTIMENT
+  MAJOR_PUBLICATION
+  EXEC_MENTION
+  COMPETITOR_SPIKE
+  VOLUME_SPIKE
+  SENTIMENT_DETERIORATION
+  TOPIC_PHRASE
+  JOURNALIST_INQUIRY
+  REGULATORY_LANGUAGE
+  MISINFORMATION_INDICATOR
+}
+
+enum AlertChannel {
+  IN_APP
+  EMAIL
+  SLACK
+  TEAMS
+}
+
+enum AlertCadence {
+  IMMEDIATE
+  HOURLY
+  DAILY
+  WEEKLY
+}
+
+enum AlertDeliveryStatus {
+  PENDING
+  DELIVERED
+  SUPPRESSED
+  FAILED
+  NOT_CONFIGURED
+}
+
+enum ReportTemplateType {
+  DAILY_BRIEF
+  WEEKLY_COVERAGE
+  MONTHLY_PR
+  CAMPAIGN_WRAP
+  CRISIS_BRIEF
+  EXEC_COMPETITOR
+}
+
+enum ReportStatus {
+  DRAFT
+  FINAL
+}
+
+enum ManualMetricType {
+  REACH
+  AVE
+}
+
+enum ManualMetricConfidence {
+  KNOWN
+  ESTIMATED
+  UNAVAILABLE
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy & access
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  locale       String   @default("en") // "en" | "fr"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships        Membership[]
+  projectMemberships ProjectMembership[]
+  createdQueries     MonitoringQuery[]   @relation("QueryCreatedBy")
+  auditLogs          AuditLog[]
+  savedFilters       SavedFilter[]
+  generatedReports   Report[]
+  manualMetrics      ManualMetric[]
+
+  @@index([email])
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  country   String   @default("CA")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  projects    Project[]
+  auditLogs   AuditLog[]
+  apiUsage    APIUsage[]
+}
+
+model Membership {
+  id             String         @id @default(cuid())
+  userId         String
+  organizationId String
+  role           MembershipRole @default(ANALYST)
+  createdAt      DateTime       @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+model Project {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  isDemo         Boolean  @default(false)
+  timezone       String   @default("America/Toronto")
+  languages      String[] @default(["en"])
+  regions        String[] @default(["CA"])
+  focusCities    String[] @default([])
+  crisisTerms    String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectMemberships ProjectMembership[]
+  brands             Brand[]
+  competitors        Competitor[]
+  monitoringQueries  MonitoringQuery[]
+  sourceConnections  SourceConnection[]
+  sources            Source[]
+  mentions           Mention[]
+  duplicateClusters  DuplicateCluster[]
+  topics             Topic[]
+  tags               Tag[]
+  keyMessages        KeyMessage[]
+  alertRules         AlertRule[]
+  digests            Digest[]
+  reports            Report[]
+  savedFilters       SavedFilter[]
+  manualMetrics      ManualMetric[]
+  auditLogs          AuditLog[]
+  ingestionJobs      IngestionJob[]
+
+  @@index([organizationId])
+}
+
+model ProjectMembership {
+  id        String          @id @default(cuid())
+  userId    String
+  projectId String
+  role      MembershipRole?
+  createdAt DateTime        @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Brand / competitive set
+// ---------------------------------------------------------------------------
+
+model Brand {
+  id         String   @id @default(cuid())
+  projectId  String
+  name       String
+  aliases    String[] @default([])
+  websites   String[] @default([])
+  handles    Json?
+  executives Json?
+  products   String[] @default([])
+  campaigns  String[] @default([])
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  competitors Competitor[]
+
+  @@index([projectId])
+}
+
+model Competitor {
+  id           String   @id @default(cuid())
+  projectId    String
+  brandId      String
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  brand   Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, brandId])
+  @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Query system
+// ---------------------------------------------------------------------------
+
+model MonitoringQuery {
+  id                  String    @id @default(cuid())
+  projectId           String
+  name                String
+  mode                QueryMode @default(VISUAL)
+  booleanExpression   String    @db.Text
+  isActive            Boolean   @default(false)
+  lastTestedAt        DateTime?
+  lastTestResultCount Int?
+  createdById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy         User?              @relation("QueryCreatedBy", fields: [createdById], references: [id])
+  terms             QueryTerm[]
+  sourceConnections SourceConnection[]
+  mentions          Mention[]
+
+  @@index([projectId, isActive])
+}
+
+model QueryTerm {
+  id                String        @id @default(cuid())
+  monitoringQueryId String
+  termType          QueryTermType
+  value             String
+  language          String        @default("any")
+  position          Int           @default(0)
+
+  monitoringQuery MonitoringQuery @relation(fields: [monitoringQueryId], references: [id], onDelete: Cascade)
+
+  @@index([monitoringQueryId])
+}
+
+// ---------------------------------------------------------------------------
+// Sources & ingestion
+// ---------------------------------------------------------------------------
+
+model SourceConnection {
+  id                   String                 @id @default(cuid())
+  projectId            String
+  monitoringQueryId    String?
+  adapterType          AdapterType
+  name                 String
+  config               Json
+  status               SourceConnectionStatus @default(ACTIVE)
+  pollingFrequencyMins Int                    @default(60)
+  lastPolledAt         DateTime?
+  lastError            String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  monitoringQuery MonitoringQuery? @relation(fields: [monitoringQueryId], references: [id])
+  mentions        Mention[]
+  ingestionJobs   IngestionJob[]
+
+  @@index([projectId, status])
+}
+
+model Source {
+  id         String     @id @default(cuid())
+  projectId  String?
+  domain     String
+  name       String
+  sourceType SourceType @default(UNKNOWN)
+  country    String?
+  province   String?
+  language   String?
+  isCanadian Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+
+  project  Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mentions Mention[]
+
+  @@unique([domain, projectId])
+  @@index([projectId])
+}
+
+model IngestionJob {
+  id                 String             @id @default(cuid())
+  projectId          String
+  sourceConnectionId String
+  status             IngestionJobStatus @default(QUEUED)
+  startedAt          DateTime?
+  finishedAt         DateTime?
+  itemsFetched       Int                @default(0)
+  itemsNew           Int                @default(0)
+  errorMessage       String?
+  attempt            Int                @default(1)
+  createdAt          DateTime           @default(now())
+
+  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceConnection SourceConnection @relation(fields: [sourceConnectionId], references: [id], onDelete: Cascade)
+
+  @@index([sourceConnectionId, createdAt])
+  @@index([projectId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Mentions, dedup, analysis
+// ---------------------------------------------------------------------------
+
+model Mention {
+  id                 String  @id @default(cuid())
+  projectId          String
+  monitoringQueryId  String?
+  sourceConnectionId String?
+  sourceId           String?
+  duplicateClusterId String?
+
+  provider         String
+  providerRecordId String?
+  canonicalUrl     String     @db.Text
+  originalUrl      String     @db.Text
+  sourceName       String
+  sourceDomain     String
+  sourceType       SourceType @default(UNKNOWN)
+
+  headline    String   @db.Text
+  excerpt     String?  @db.Text
+  bodyText    String?  @db.Text
+  author      String?
+  publishedAt DateTime
+  fetchedAt   DateTime @default(now())
+  language    String   @default("en")
+  country     String?
+  province    String?
+  imageUrl    String?
+
+  keywordMatches        String[] @default([])
+  matchedQuery          String?
+  entities              Json?
+  brandsMentioned       String[] @default([])
+  spokespeopleMentioned String[] @default([])
+  competitorsMentioned  String[] @default([])
+
+  coverageType  CoverageType?
+  placementType PlacementType?
+
+  topicLabels    String[] @default([])
+  campaignLabels String[] @default([])
+
+  reviewStatus   ReviewStatus @default(UNREVIEWED)
+  analystNotes   String?      @db.Text
+  aiErrorFlagged Boolean      @default(false)
+
+  isDemo              Boolean @default(false)
+  rawProviderMetadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Generated column (see migration 20260710173400_fulltext_search); Prisma
+  // cannot write to it directly but must know it exists to avoid drift.
+  searchVector Unsupported("tsvector")?
+
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  monitoringQuery  MonitoringQuery?  @relation(fields: [monitoringQueryId], references: [id])
+  sourceConnection SourceConnection? @relation(fields: [sourceConnectionId], references: [id])
+  source           Source?           @relation(fields: [sourceId], references: [id])
+  duplicateCluster DuplicateCluster? @relation(fields: [duplicateClusterId], references: [id])
+
+  analysisResult     AnalysisResult?
+  mentionTags        MentionTag[]
+  messageMatches     MessageMatch[]
+  alertEvents        AlertEvent[]
+  manualMetrics      ManualMetric[]
+  canonicalOfCluster DuplicateCluster[] @relation("ClusterCanonicalMention")
+
+  @@index([projectId, publishedAt])
+  @@index([canonicalUrl])
+  @@index([duplicateClusterId])
+  @@index([projectId, reviewStatus])
+  @@index([projectId, isDemo])
+}
+
+model DuplicateCluster {
+  id                 String   @id @default(cuid())
+  projectId          String
+  canonicalMentionId String?
+  fingerprint        String
+  memberCount        Int      @default(1)
+  isSyndicated       Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  canonicalMention Mention?  @relation("ClusterCanonicalMention", fields: [canonicalMentionId], references: [id])
+  members          Mention[]
+
+  @@index([projectId, fingerprint])
+}
+
+model AnalysisResult {
+  id        String         @id @default(cuid())
+  mentionId String         @unique
+  engine    AnalysisEngine
+  modelName String?
+
+  relevanceLabel  RelevanceLabel
+  relevanceScore  Float
+  relevanceReason String         @db.Text
+
+  sentiment               Sentiment
+  sentimentConfidence     Float
+  sentimentEvidence       String?   @db.Text
+  sentimentSubjectIsBrand Boolean   @default(true)
+
+  coverageType          CoverageType
+  prominence            Prominence
+  prominenceExplanation String?      @db.Text
+
+  riskScore          Int
+  riskLevel          String
+  riskReasons        String[] @default([])
+  emergingNarrative  String?  @db.Text
+  recommendedUrgency String?
+
+  topics          String[] @default([])
+  secondaryTopics String[] @default([])
+
+  executiveSummary String @db.Text
+
+  rawModelResponse Json?
+  schemaVersion    Int   @default(1)
+
+  correctedByUserId String?
+  correctedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mention Mention @relation(fields: [mentionId], references: [id], onDelete: Cascade)
+
+  @@index([sentiment])
+  @@index([riskScore])
+  @@index([relevanceLabel])
+}
+
+model Topic {
+  id                String   @id @default(cuid())
+  projectId         String
+  name              String
+  description       String?
+  isSystemGenerated Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, name])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  color     String   @default("#64748b")
+  createdAt DateTime @default(now())
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mentionTags MentionTag[]
+
+  @@unique([projectId, name])
+}
+
+model MentionTag {
+  id        String @id @default(cuid())
+  mentionId String
+  tagId     String
+
+  mention Mention @relation(fields: [mentionId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([mentionId, tagId])
+}
+
+model KeyMessage {
+  id        String   @id @default(cuid())
+  projectId String
+  text      String   @db.Text
+  aliases   String[] @default([])
+  createdAt DateTime @default(now())
+
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messageMatches MessageMatch[]
+
+  @@index([projectId])
+}
+
+model MessageMatch {
+  id                String   @id @default(cuid())
+  mentionId         String
+  keyMessageId      String
+  matchStrength     String // "FULL" | "PARTIAL" | "ABSENT" | "CONTRADICTORY"
+  confidence        Float
+  supportingExcerpt String?  @db.Text
+  createdAt         DateTime @default(now())
+
+  mention    Mention    @relation(fields: [mentionId], references: [id], onDelete: Cascade)
+  keyMessage KeyMessage @relation(fields: [keyMessageId], references: [id], onDelete: Cascade)
+
+  @@unique([mentionId, keyMessageId])
+}
+
+// ---------------------------------------------------------------------------
+// Governance
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  projectId      String?
+  userId         String?
+  entityType     String
+  entityId       String
+  action         String
+  previousValue  Json?
+  newValue       Json?
+  reason         String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  project      Project?      @relation(fields: [projectId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+
+  @@index([projectId, createdAt])
+  @@index([entityType, entityId])
+}
+
+// ---------------------------------------------------------------------------
+// Alerting
+// ---------------------------------------------------------------------------
+
+model AlertRule {
+  id               String           @id @default(cuid())
+  projectId        String
+  name             String
+  triggerType      AlertTriggerType
+  config           Json
+  deliveryChannels AlertChannel[]
+  slackWebhookUrl  String?
+  teamsWebhookUrl  String?
+  emailRecipients  String[]         @default([])
+  cadence          AlertCadence     @default(IMMEDIATE)
+  quietHoursStart  Int?
+  quietHoursEnd    Int?
+  timezone         String           @default("America/Toronto")
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  alertEvents AlertEvent[]
+
+  @@index([projectId, isActive])
+}
+
+model AlertEvent {
+  id                      String              @id @default(cuid())
+  alertRuleId             String
+  mentionId               String?
+  triggeredAt             DateTime            @default(now())
+  payload                 Json
+  deliveredAt             DateTime?
+  deliveryStatus          AlertDeliveryStatus @default(PENDING)
+  suppressedDuplicateOfId String?
+
+  alertRule             AlertRule    @relation(fields: [alertRuleId], references: [id], onDelete: Cascade)
+  mention               Mention?     @relation(fields: [mentionId], references: [id])
+  suppressedDuplicateOf AlertEvent?  @relation("AlertEventSuppression", fields: [suppressedDuplicateOfId], references: [id])
+  suppressedDuplicates  AlertEvent[] @relation("AlertEventSuppression")
+
+  @@index([alertRuleId, triggeredAt])
+}
+
+model Digest {
+  id         String       @id @default(cuid())
+  projectId  String
+  cadence    AlertCadence @default(DAILY)
+  recipients String[]     @default([])
+  config     Json?
+  lastSentAt DateTime?
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Reporting
+// ---------------------------------------------------------------------------
+
+model Report {
+  id             String             @id @default(cuid())
+  projectId      String
+  templateType   ReportTemplateType
+  title          String
+  dateRangeStart DateTime
+  dateRangeEnd   DateTime
+  generatedById  String?
+  status         ReportStatus       @default(DRAFT)
+  shareToken     String?            @unique
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  generatedBy User?           @relation(fields: [generatedById], references: [id])
+  sections    ReportSection[]
+
+  @@index([projectId, templateType])
+}
+
+model ReportSection {
+  id          String  @id @default(cuid())
+  reportId    String
+  sectionType String
+  order       Int     @default(0)
+  content     Json
+  commentary  String? @db.Text
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, order])
+}
+
+model SavedFilter {
+  id         String   @id @default(cuid())
+  projectId  String
+  userId     String
+  name       String
+  filterJson Json
+  createdAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, userId])
+}
+
+model ManualMetric {
+  id          String                 @id @default(cuid())
+  projectId   String
+  mentionId   String?
+  metricType  ManualMetricType
+  value       Float
+  confidence  ManualMetricConfidence @default(ESTIMATED)
+  source      String?
+  isLegacyAVE Boolean                @default(false)
+  enteredById String?
+  enteredAt   DateTime               @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mention   Mention? @relation(fields: [mentionId], references: [id])
+  enteredBy User?    @relation(fields: [enteredById], references: [id])
+
+  @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Ops / cost controls
+// ---------------------------------------------------------------------------
+
+model APIUsage {
+  id               String   @id @default(cuid())
+  organizationId   String
+  projectId        String?
+  provider         String
+  callsUsed        Int      @default(0)
+  tokensUsed       Int      @default(0)
+  estimatedCostUsd Float    @default(0)
+  date             DateTime @db.Date
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, projectId, provider, date])
+  @@index([organizationId, date])
+}
