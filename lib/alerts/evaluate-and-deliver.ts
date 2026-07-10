@@ -77,7 +77,14 @@ export async function evaluateAlertsForMention(mentionId: string): Promise<{ fir
     }
 
     if (quiet) {
-      await prisma.alertEvent.update({ where: { id: event.id }, data: { deliveryStatus: "PENDING" } });
+      await prisma.alertEvent.update({
+        where: { id: event.id },
+        data: {
+          deliveryStatus: "SUPPRESSED",
+          payload: { ...payload, suppressionReason: "QUIET_HOURS" } as any,
+        },
+      });
+      suppressed += 1;
       continue;
     }
 
