@@ -49,7 +49,7 @@ describe("adapter contract: RSS", () => {
   it("declares itself Tier 1, keyless, and real (no auth required)", () => {
     expect(rssAdapter.tier).toBe(1);
     expect(rssAdapter.authRequired).toBe(false);
-    expect(rssAdapter.authStatus({})).toBe("none");
+    expect(rssAdapter.authStatus({ feedUrl: "https://example.ca/feed" })).toBe("none");
   });
 });
 

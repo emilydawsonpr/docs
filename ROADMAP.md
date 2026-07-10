@@ -11,9 +11,9 @@ Recommended next development priorities, roughly in order.
 2. **Upgrade to Next.js 15** (async `params`/`searchParams`, React 19) to
    pick up the security patches unavailable in the 14.x line — see
    `SECURITY.md` for the exact CVE list and risk assessment.
-3. **Settings page** for post-onboarding brand/competitor/key-message/crisis-term
-   editing (the CRUD is mostly already there via the underlying Prisma
-   models — this is a UI gap, not a backend one).
+3. ~~**Settings page**~~ Done — see `KNOWN_LIMITATIONS.md`. Remaining
+   related follow-up: a project-membership management UI (invite/remove
+   users, set project-level role overrides) is still onboarding/API-only.
 4. **Wire `APIUsage` tracking** into the real Claude call path and build a
    minimal cost dashboard + a per-project/org spend cap that flips back to
    mock mode automatically (see `COST_CONTROLS.md`).

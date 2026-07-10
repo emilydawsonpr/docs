@@ -93,12 +93,17 @@ adapters are visibly disabled in the UI rather than silently absent.
   (`IngestionJob`, `AlertEvent.deliveryStatus`, worker `console.error`
   logs) — there is no dedicated "failed-job dashboard" UI surfacing them
   yet; querying via `pnpm db:studio` works today.
-- **Settings/admin pages**: brand, competitor, key-message, and crisis-term
-  editing is available through the onboarding flow and the seed/demo code
-  path; there's no post-onboarding settings page to edit them yet (a
-  meaningful near-term addition — the underlying API routes largely already
-  exist for brand/competitor CRUD via the `Brand`/`Competitor`/`KeyMessage`
-  Prisma models, just not wired to a settings UI).
+- ~~**Settings/admin pages**~~ **Resolved**: a post-onboarding Settings page
+  (`/projects/[projectId]/settings`) now exists for editing project
+  details (timezone/languages/regions/focus cities/crisis terms), the
+  primary brand, competitors (add/edit/remove), and key messages
+  (add/remove) — `lib/validation/brand.ts`, `lib/validation/key-message.ts`,
+  `app/api/projects/[projectId]/brands/**`,
+  `app/api/projects/[projectId]/key-messages/**`. RBAC-gated at ANALYST+
+  (`canEditMonitoringLogic`), full audit-log trail, primary brand cannot be
+  deleted. Verified end to end against the running dev server (create/edit/
+  delete competitor, add/remove key message, viewer correctly blocked with
+  403, audit log rows confirmed via direct query).
 - **CSRF token on JSON API routes**: relies on `SameSite=Lax` session
   cookies rather than an explicit anti-CSRF token; see `SECURITY.md`.
 - **Dependency vulnerabilities**: 17 remain after this session's cleanup
