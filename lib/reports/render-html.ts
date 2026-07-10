@@ -20,6 +20,18 @@ function esc(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
+/** Mention URLs can originate from user-controlled CSV/manual-URL input, so only
+ * ever emit http(s) links — anything else (javascript:, data:, etc.) is dropped. */
+function safeHref(url: unknown): string {
+  const s = String(url ?? "");
+  try {
+    if (["http:", "https:"].includes(new URL(s).protocol)) return esc(s);
+  } catch {
+    // not a parseable absolute URL — fall through to "#"
+  }
+  return "#";
+}
+
 function renderSection(section: ReportSectionLike): string {
   const c = section.content ?? {};
   switch (section.sectionType) {
@@ -37,7 +49,7 @@ function renderSection(section: ReportSectionLike): string {
           : `<ul>${(c.mentions ?? [])
               .map(
                 (m: any) =>
-                  `<li><a href="${esc(m.url)}">${esc(m.headline)}</a> — risk score ${esc(m.riskScore)}${
+                  `<li><a href="${safeHref(m.url)}">${esc(m.headline)}</a> — risk score ${esc(m.riskScore)}${
                     m.riskReasons?.length ? `<br><span class="muted">${esc(m.riskReasons.join("; "))}</span>` : ""
                   }</li>`
               )
@@ -84,7 +96,7 @@ function renderMentionList(mentions: any[] = []): string {
   return `<ul>${mentions
     .map(
       (m) =>
-        `<li><a href="${esc(m.url)}">${esc(m.headline)}</a>${m.sourceName ? ` — ${esc(m.sourceName)}` : ""}${
+        `<li><a href="${safeHref(m.url)}">${esc(m.headline)}</a>${m.sourceName ? ` — ${esc(m.sourceName)}` : ""}${
           m.sentiment ? ` <span class="tag">${esc(m.sentiment)}</span>` : ""
         }</li>`
     )

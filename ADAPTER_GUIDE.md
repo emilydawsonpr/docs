@@ -6,7 +6,9 @@ touching ingestion, normalization, dedup, or analysis code.
 
 ```ts
 interface SourceAdapter<TConfig> {
-  id: string;                       // matches the Prisma AdapterType enum value
+  id: string;                       // short provider id, e.g. "rss" — the registry key
+                                     // (lib/adapters/registry.ts) is what matches the
+                                     // Prisma AdapterType enum, not this field
   displayName: string;
   tier: 1 | 2;                      // 1 = real in this build, 2 = registered stub
   authRequired: boolean;

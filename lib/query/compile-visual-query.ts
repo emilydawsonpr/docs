@@ -4,7 +4,7 @@ export interface VisualTermInput {
 }
 
 function quote(term: string): string {
-  return term.includes(" ") ? `"${term.replace(/"/g, "")}"` : term;
+  return term.includes(" ") || term.includes('"') ? `"${term.replace(/"/g, "")}"` : term;
 }
 
 /**
