@@ -31,14 +31,20 @@ export async function storeNormalizedMentions(params: {
   const { projectId, monitoringQueryId, sourceConnectionId, provider, items, matchedQuery, enqueueAnalysis = true } = params;
   const newMentionIds: string[] = [];
 
-  for (const item of items) {
-    const canonicalUrl = canonicalizeUrl(item.canonicalUrl);
+  const canonicalUrls = items.map((item) => canonicalizeUrl(item.canonicalUrl));
+  const existingRows = await prisma.mention.findMany({
+    where: { projectId, canonicalUrl: { in: canonicalUrls } },
+    select: { canonicalUrl: true },
+  });
+  // Seeded with already-stored URLs, then grown as we go so duplicates
+  // *within* the same incoming batch are also skipped, not just ones
+  // already in the database.
+  const seenCanonicalUrls = new Set(existingRows.map((r) => r.canonicalUrl));
 
-    const existing = await prisma.mention.findFirst({
-      where: { projectId, canonicalUrl },
-      select: { id: true },
-    });
-    if (existing) continue;
+  for (const [index, item] of items.entries()) {
+    const canonicalUrl = canonicalUrls[index];
+    if (seenCanonicalUrls.has(canonicalUrl)) continue;
+    seenCanonicalUrls.add(canonicalUrl);
 
     const mentionId = await prisma.$transaction(async (tx) => {
       const mention = await tx.mention.create({

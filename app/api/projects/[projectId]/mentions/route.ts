@@ -33,6 +33,7 @@ export async function GET(req: Request, { params }: { params: { projectId: strin
             OR: [
               { headline: { contains: filters.q, mode: "insensitive" } },
               { excerpt: { contains: filters.q, mode: "insensitive" } },
+              { bodyText: { contains: filters.q, mode: "insensitive" } },
               { sourceName: { contains: filters.q, mode: "insensitive" } },
             ],
           }

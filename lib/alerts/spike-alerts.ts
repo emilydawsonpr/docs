@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db/prisma";
 import { subDays, format, startOfDay } from "date-fns";
 import { computeDashboardMetrics } from "@/lib/analytics/dashboard-metrics";
 import { detectLatestSpike, DEFAULT_SPIKE_CONFIG } from "@/lib/analytics/spike-detection";
+import { textMentionsAnyName } from "@/lib/utils";
 import { deliverAlert } from "./delivery";
 
 const DAILY_THROTTLE = true; // at most one periodic alert per rule per day
@@ -78,14 +79,14 @@ async function evaluateCompetitorSpike(rule: Awaited<ReturnType<typeof prisma.al
   const since = subDays(new Date(), 30);
 
   for (const competitor of competitors) {
-    const names = [competitor.brand.name, ...competitor.brand.aliases].map((n) => n.toLowerCase());
+    const names = [competitor.brand.name, ...competitor.brand.aliases];
     const mentions = await prisma.mention.findMany({
       where: { projectId: rule.projectId, publishedAt: { gte: since }, isDemo: false },
       select: { headline: true, excerpt: true, bodyText: true, publishedAt: true },
     });
     const matching = mentions.filter((m) => {
-      const text = `${m.headline}\n${m.excerpt ?? ""}\n${m.bodyText ?? ""}`.toLowerCase();
-      return names.some((n) => text.includes(n));
+      const text = `${m.headline}\n${m.excerpt ?? ""}\n${m.bodyText ?? ""}`;
+      return textMentionsAnyName(text, names);
     });
 
     const byDay = new Map<string, number>();

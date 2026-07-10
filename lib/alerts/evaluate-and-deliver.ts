@@ -67,26 +67,38 @@ export async function evaluateAlertsForMention(mentionId: string): Promise<{ fir
 
     const quiet = rule.cadence === "IMMEDIATE" && isWithinQuietHours(rule.timezone, rule.quietHoursStart, rule.quietHoursEnd);
 
-    const event = await prisma.alertEvent.create({
-      data: { alertRuleId: rule.id, mentionId: mention.id, payload, deliveryStatus: "PENDING" },
-    });
-
     if (rule.cadence !== "IMMEDIATE") {
-      // Non-immediate cadences are rolled up by the digest job instead of delivered now.
-      continue;
-    }
-
-    if (quiet) {
-      await prisma.alertEvent.update({
-        where: { id: event.id },
+      // Non-immediate cadences aren't delivered per-mention at all — there is
+      // no later job that revisits a PENDING row, so record it as suppressed
+      // (with a reason) rather than leaving a row that will never resolve.
+      await prisma.alertEvent.create({
         data: {
+          alertRuleId: rule.id,
+          mentionId: mention.id,
+          payload: { ...payload, suppressedReason: `Cadence is ${rule.cadence}, not IMMEDIATE — not delivered per-mention.` },
           deliveryStatus: "SUPPRESSED",
-          payload: { ...payload, suppressionReason: "QUIET_HOURS" } as any,
         },
       });
       suppressed += 1;
       continue;
     }
+
+    if (quiet) {
+      await prisma.alertEvent.create({
+        data: {
+          alertRuleId: rule.id,
+          mentionId: mention.id,
+          payload: { ...payload, suppressedReason: "Suppressed: within the rule's configured quiet hours." },
+          deliveryStatus: "SUPPRESSED",
+        },
+      });
+      suppressed += 1;
+      continue;
+    }
+
+    const event = await prisma.alertEvent.create({
+      data: { alertRuleId: rule.id, mentionId: mention.id, payload, deliveryStatus: "PENDING" },
+    });
 
     const outcomes = await deliverAlert(rule, {
       title: payload.title,

@@ -58,3 +58,19 @@ export function slugify(input: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "");
 }
+
+/**
+ * Whether `text` contains any of `names` as a whole word/phrase match rather
+ * than a bare substring — avoids false positives like brand "Bell" matching
+ * inside "rebellion". Word boundaries are Unicode-letter/number aware so
+ * this also works for French accented names.
+ */
+export function textMentionsAnyName(text: string, names: string[]): boolean {
+  const lower = text.toLowerCase();
+  return names.some((name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return false;
+    const escaped = trimmed.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "u").test(lower);
+  });
+}

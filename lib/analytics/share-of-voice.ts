@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { subDays } from "date-fns";
+import { textMentionsAnyName } from "@/lib/utils";
 
 export interface ShareOfVoiceEntry {
   brandId: string;
@@ -40,10 +41,10 @@ export async function computeShareOfVoice(projectId: string, isDemo: boolean, wi
   });
 
   const entries: ShareOfVoiceEntry[] = brands.map((brand) => {
-    const names = [brand.name, ...brand.aliases].map((n) => n.toLowerCase()).filter(Boolean);
+    const names = [brand.name, ...brand.aliases].filter(Boolean);
     const matched = mentions.filter((m) => {
-      const text = `${m.headline}\n${m.excerpt ?? ""}\n${m.bodyText ?? ""}`.toLowerCase();
-      return names.some((n) => text.includes(n));
+      const text = `${m.headline}\n${m.excerpt ?? ""}\n${m.bodyText ?? ""}`;
+      return textMentionsAnyName(text, names);
     });
     const uniqueStories = new Set(matched.map((m) => m.duplicateClusterId ?? m.id)).size;
     const positivePlacements = matched.filter((m) => m.analysisResult?.sentiment === "POSITIVE").length;
