@@ -28,9 +28,8 @@ export async function POST(req: Request, { params }: { params: { projectId: stri
     const body = await req.json().catch(() => ({}));
     const input = createCompetitorSchema.parse(body);
 
-    const existingCount = await prisma.competitor.count({ where: { projectId: params.projectId } });
-
     const { brand, competitor } = await prisma.$transaction(async (tx) => {
+      const existingCount = await tx.competitor.count({ where: { projectId: params.projectId } });
       const brand = await tx.brand.create({
         data: { projectId: params.projectId, name: input.name, aliases: input.aliases, isPrimary: false },
       });
