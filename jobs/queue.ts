@@ -3,11 +3,17 @@ import IORedis from "ioredis";
 
 let connection: IORedis | undefined;
 
-/** Lazily-created shared Redis connection for BullMQ (maxRetriesPerRequest must be null for BullMQ). */
+/**
+ * Lazily-created shared Redis connection for BullMQ.
+ * - `maxRetriesPerRequest: null` is required by BullMQ.
+ * - `family: 0` lets DNS return both IPv4 and IPv6 records, which is needed to
+ *   reach managed Redis over an IPv6-only private network (e.g. Railway's
+ *   `*.railway.internal` hosts); it is harmless for localhost/IPv4 URLs.
+ */
 export function getRedisConnection(): IORedis {
   if (!connection) {
     const url = process.env.REDIS_URL ?? "redis://localhost:6380";
-    connection = new IORedis(url, { maxRetriesPerRequest: null });
+    connection = new IORedis(url, { maxRetriesPerRequest: null, family: 0 });
   }
   return connection;
 }

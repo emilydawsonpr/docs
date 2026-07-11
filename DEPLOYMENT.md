@@ -19,6 +19,51 @@ these local ports. Run `pnpm db:migrate` once, then `pnpm dev` (app) and
 If your machine already has Postgres/Redis running elsewhere, just point
 `DATABASE_URL`/`REDIS_URL` at those instead and skip the dev-services script.
 
+## Production: Railway (all-in-one, recommended)
+
+Railway can host the whole system from this one repo — the web app *and* the
+always-on background worker — and provision managed Postgres and Redis
+alongside them. This avoids splitting across four vendors.
+
+The repo is pre-configured for this:
+- `railway.json` builds with Nixpacks and starts the web service with
+  `pnpm db:deploy && pnpm start` (runs migrations, then boots Next.js).
+- `postinstall` runs `prisma generate` so the Prisma client is built on every
+  install (web build and worker alike).
+- `.nvmrc` / `engines.node` pin Node 22.
+- `prisma`, `tsx`, and `dotenv` are runtime `dependencies` (the worker runs
+  `tsx jobs/run-workers.ts`; the deploy step runs the `prisma` CLI).
+- `jobs/queue.ts` `getRedisConnection()` sets `family: 0` so BullMQ can reach
+  Redis over Railway's IPv6-only private network.
+
+Setup (one Railway project, two services + two databases):
+
+1. **Create the project** from this GitHub repo → this becomes the **web
+   service**. Railway auto-detects Next.js via `railway.json`.
+2. **Add a Postgres database** (New → Database → PostgreSQL) and a **Redis
+   database** (New → Database → Redis) to the same project.
+3. **Add a second service** from the same repo for the **worker**, and set its
+   start command to `pnpm worker` (Settings → Deploy → Custom Start Command).
+   Everything else (build, install, `prisma generate`) is shared.
+4. **Environment variables** — set on *both* services:
+   - `DATABASE_URL` → reference the Postgres plugin's `DATABASE_URL`
+   - `REDIS_URL` → reference the Redis plugin's `REDIS_URL`
+   - `NEXTAUTH_SECRET` → a random 32+ char string (`openssl rand -base64 32`)
+   - `NEXTAUTH_URL` → the web service's public URL (web service only)
+   - `ANTHROPIC_API_KEY` (optional) → enables real Claude analysis; without it
+     the app runs in labelled MOCK mode
+   - `NEWSAPI_KEY` / `SMTP_*` (optional) → licensed news search / email alerts
+5. **Deploy.** The web service runs `prisma migrate deploy` on boot, applying
+   both migrations to the fresh database, then serves on the generated public
+   URL. Register an account there and a demo workspace is seeded automatically.
+
+**Known caveat — PDF export:** `lib/reports/export-pdf.ts` launches headless
+Chromium from a fixed local path used in the original build sandbox. That path
+does not exist on Railway, so PDF export (only) will fail until it's pointed at
+a Chromium the container actually has (install Playwright's browser in the
+build, or bundle `@sparticuz/chromium`). Everything else — ingestion, dedup, AI
+analysis, dashboards, alerts, CSV/XLSX export, reports viewed in-app — works.
+
 ## Production: Vercel + Supabase (documented path, not executed in this build)
 
 This build ran inside a sandboxed session with no cloud account access and an
