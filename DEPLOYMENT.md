@@ -33,8 +33,8 @@ The repo is pre-configured for this:
 - `.nvmrc` / `engines.node` pin Node 22.
 - `prisma`, `tsx`, and `dotenv` are runtime `dependencies` (the worker runs
   `tsx jobs/run-workers.ts`; the deploy step runs the `prisma` CLI).
-- `lib/… getRedisConnection()` sets `family: 0` so BullMQ can reach Redis over
-  Railway's IPv6-only private network.
+- `jobs/queue.ts` `getRedisConnection()` sets `family: 0` so BullMQ can reach
+  Redis over Railway's IPv6-only private network.
 
 Setup (one Railway project, two services + two databases):
 

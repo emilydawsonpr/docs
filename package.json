@@ -12,7 +12,7 @@
     ]
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22 <23"
   },
   "scripts": {
     "dev": "next dev",
@@ -93,7 +93,6 @@
     "@vitejs/plugin-react": "4.3.1",
     "vite-tsconfig-paths": "5.0.1",
     "@testing-library/react": "16.0.1",
-    "@playwright/test": "1.61.1",
-    "prisma": "5.20.0"
+    "@playwright/test": "1.61.1"
   }
 }
